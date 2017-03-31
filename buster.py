@@ -1,7 +1,8 @@
+from bs4 import BeautifulSoup
 from datetime import datetime
 from pytz import timezone
+import re
 import requests
-from bs4 import BeautifulSoup
 """
 1. Constantly scrape cnn page looking for new transcripts
 2. 
@@ -11,16 +12,30 @@ def  timeNow():
 	dateOnly = datetime.now(zone).strftime('%Y.%m.%d')
 	return dateOnly
 
+def cnnLink():
+	return 'http://transcripts.cnn.com/TRANSCRIPTS/'+timeNow()+'.html'
+
 def scrapeFeed():
-	curPage = requests.get('http://transcripts.cnn.com/TRANSCRIPTS/'+cnnLink())
-	print(r.text.encode('utf-8'))
+	#curPage = requests.get(cnnLink())
+	personStatements = {}
+
+	curPage = requests.get('http://transcripts.cnn.com/TRANSCRIPTS/1703/31/sn.01.html').text
+	soup = BeautifulSoup(str(curPage), 'html.parser')
+	soup.prettify()
+
+
+	transcript = soup.find_all('p',{'class': 'cnnBodyText'})[-1]
+	stringscript = re.sub('\(.*[A-Z].*[A-Z].*\)', '', str(transcript).replace('<br>','\n')) #remove html tags and transition statements
+
+	print(stringscript)
+
+
+	
 	
 
-cnnLink()
+#cnnLink()
+scrapeFeed()
+#while(1):
+#	doInserts()
 
 
-"""
-http://transcripts.cnn.com/TRANSCRIPTS/2017.03.21.html
-http://transcripts.cnn.com/TRANSCRIPTS/2017.03.25.html
-
-"""

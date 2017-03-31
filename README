@@ -1,8 +1,7 @@
-1. Scrape CNN transcripts (beautifulsoup)
-	a. Create separate documents for shows
+1. Continually check CNN transcript website for new transcripts. When find one:
+	a. add id (latter part of url)
+	b. 
 2. Submit transcripts to claimbuster API
-	a. API returns .txt with score of each sentence, speaker attached to first score
-3. store in db
-	a. relations (show, person)
-	b. (show, sentences)
-	c. (speaker, claim, transcript id) (trnas id, trans text, show information)
+	a. API returns json with score of each sentence, speaker attached to first score
+3. Store in db
+	a. Relations: (speaker, claim, transcript id), (transcript id, transcript text, extra information)
