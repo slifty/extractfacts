@@ -5,7 +5,7 @@ import psycopg2
 import re
 import requests
 
-transcript_ids = []
+
 #connect sql 
 """
 try:
@@ -30,8 +30,9 @@ def getFormattedDate():
 def cnnLink():
 	return 'http://transcripts.cnn.com/TRANSCRIPTS/'+getFormattedDate()+'.html'
 
+#get transcript_ids (links endings) for each transcipt available
 def findNewTranscripts(mainPageLink):
-	#transcript_ids = []
+	transcript_ids = []
 	baseLink = 'http://transcripts.cnn.com'
 	page = requests.get(mainPageLink).text
 	soup = BeautifulSoup(page, 'html.parser')
@@ -39,56 +40,56 @@ def findNewTranscripts(mainPageLink):
 	for piece in soup.find_all('div', {'class': 'cnnSectBulletItems'}):
 		for anchor in piece.find_all('a', href = True):
 			print(baseLink+anchor['href'])
-			#transcript_ids.append(anchor['href'])
+			transcript_ids.append(baseLink+anchor['href'])
 			print()
 
 	return transcript_ids
 
 
+#scrape each transcript
 
-
-findNewTranscripts(cnnLink())
-
-#scrape a transcript
-"""
 def scrapeFeed():
-	for transcript in transcript_ids:
+	
+	linksToday = findNewTranscripts(cnnLink())
+	
+	for transcript in linksToday:
 
-		personStatements = {}
-		speakerIndeces = [] 
-		indeces = [] #indeces of beginning of new speaker statements
-		speakerChunks = []
+		personStatements = {} #!!!!!!!!
+		
 
-		#future: curPage = requests.get(findNewTranscripts(cnnLink()))
-		curPage = requests.get('http://transcripts.cnn.com/TRANSCRIPTS/1703/31/sn.01.html').text 
-		soup = BeautifulSoup(str(curPage), 'html.parser')
-		soup.prettify()
-		transcript = soup.find_all('p',{'class': 'cnnBodyText'})[-1]
-		stringscript = re.sub('\(.*[A-Z].*[A-Z].*\)', '', str(transcript).replace('<br>','\n')) #remove html tags and transition statements
-
-
-		prevStart = 0
-		for m in re.finditer('.*[A-Z].*[A-Z].*?:', stringscript):
-			speakerIndeces.append((m.start(), m.end()))
-			indeces.append(m.end())
-			if prevStart: speakerChunks.append(stringscript[prevStart:m.start()])
-			prevStart = m.start()
+		curPage = requests.get(transcript).text
+		soup = BeautifulSoup(curPage, 'html.parser')
+		
+		try: #some transcripts raise recursion error with bs4.prettify()
+			soup.prettify()
+			print('it prettified')
 			
+			transcript = soup.find_all('p',{'class': 'cnnBodyText'})[-1]
+			stringscript = re.sub('\(.*[A-Z].*[A-Z].*\)', '', str(transcript).replace('<br>','\n')) #remove html tags and transition statements
 
-		for indices, chunk in zip(speakerIndeces, speakerChunks):
+			
+			prevStart = 0
+			speakerIndeces = [] #find indices of speaker names
+			speakerChunks = [] #pieces of text w/speaker name
 
-"""
+			for m in re.finditer('.*[A-Z].*[A-Z].*?:', stringscript):
+				speakerIndeces.append((m.start(), m.end()))
 
-	#for index in range(len(indices)):
-		#speakerChunks.add(stringscript)	
-
-	#print(stringscript)
-
-
-	
-	
+				if prevStart:
+					speakerChunks.append(stringscript[prevStart:m.start()])
+				prevStart = m.start()
+				end = m.end()
+			speakerChunks.append(stringscript[end:stringscript.index('<br/></br></br></br>')]) #add last speaker chunk
 
 
-#scrapeFeed()
+			for indices, chunk in zip(speakerIndeces, speakerChunks):
+				print(indices, chunk.encode('utf-8'))
+			
+			
+		except:
+			print("error with this transcript")
+
+scrapeFeed()
+
 #while(1):
 #	doInserts()
