@@ -71,20 +71,26 @@ def scrapeFeed():
 			prevStart = 0
 			speakerIndeces = [] #find indices of speaker names
 			speakerChunks = [] #pieces of text w/speaker name
+			speakers = []
+			lastSpeaker = ''
 
-			for m in re.finditer('.*[A-Z].*[A-Z].*?:', stringscript):
-				speakerIndeces.append((m.start(), m.end()))
+			for m in re.finditer('[A-Z].*[A-Z] ?:', stringscript):
+				#speakerIndeces.append((m.start(), m.end()))
+				speakers.append(m.group(0))
+				lastSpeaker = m.group(0)
 
 				if prevStart:
 					speakerChunks.append(stringscript[prevStart:m.start()])
-				prevStart = m.start()
+				prevStart = m.end()
 				end = m.end()
 			speakerChunks.append(stringscript[end:stringscript.index('<br/></br></br></br>')]) #add last speaker chunk
+			speakers.append(lastSpeaker)
+
+			for speaker, chunk in zip(speakers, speakerChunks):
+				print(speaker, chunk)
 
 
-			for indices, chunk in zip(speakerIndeces, speakerChunks):
-				print(indices, chunk.encode('utf-8'))
-			
+			#Where I am now: getting regex to only match the first name when CNN forgets a line break in a paragraph.
 			
 		except:
 			print("error with this transcript")

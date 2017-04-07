@@ -1,7 +1,0 @@
-1. Continually check CNN transcript website for new transcripts. When find one:
-	a. add id (latter part of url)
-	b. 
-2. Submit transcripts to claimbuster API
-	a. API returns json with score of each sentence, speaker attached to first score
-3. Store in db
-	a. Relations: (speaker, claim, transcript id), (transcript id, transcript text, extra information)
