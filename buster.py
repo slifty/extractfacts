@@ -60,7 +60,7 @@ def scrapeFeed():
 		curPage = requests.get(transcript).text
 		soup = BeautifulSoup(curPage, 'html.parser')
 		
-		try: #some transcripts raise recursion error with bs4.prettify()
+		try: 
 			soup.prettify()
 			print('it prettified')
 			
@@ -74,10 +74,16 @@ def scrapeFeed():
 			speakers = []
 			lastSpeaker = ''
 
+			#for m in re.finditer('[A-Z].{1,5}[A-Z]?:', stringscript):
 			for m in re.finditer('[A-Z].*[A-Z] ?:', stringscript):
-				#speakerIndeces.append((m.start(), m.end()))
-				speakers.append(m.group(0))
-				lastSpeaker = m.group(0)
+				temp = m.group(0)
+				if ',' in temp:
+					temp = temp[:temp.find(',')]
+				if ':' in temp:
+					temp = temp[:temp.find(':')]
+
+				speakers.append(temp)
+				lastSpeaker = temp
 
 				if prevStart:
 					speakerChunks.append(stringscript[prevStart:m.start()])
@@ -86,11 +92,14 @@ def scrapeFeed():
 			speakerChunks.append(stringscript[end:stringscript.index('<br/></br></br></br>')]) #add last speaker chunk
 			speakers.append(lastSpeaker)
 
-			for speaker, chunk in zip(speakers, speakerChunks):
-				print(speaker, chunk)
+			for speaker in speakers:
+				print(speaker)
+			print('-------------------------------')
 
-
-			#Where I am now: getting regex to only match the first name when CNN forgets a line break in a paragraph.
+			# Where I am now:
+			# Need to cut off party suffixes; need to make sure that firstname_lastname and last_name refer to same person
+			# need to end this method by returning speakers, speakerchunks and pass those to another function
+			# and that function will interact with the api!
 			
 		except:
 			print("error with this transcript")
