@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
 from datetime import datetime
+from difflib import SequenceMatcher
 from pytz import timezone
 import psycopg2
 import re
@@ -28,7 +29,8 @@ def getFormattedDate():
 
 #return today's CNN transcript page URL
 def cnnLink():
-	return 'http://transcripts.cnn.com/TRANSCRIPTS/'+getFormattedDate()+'.html'
+	#return 'http://transcripts.cnn.com/TRANSCRIPTS/'+getFormattedDate()+'.html'
+	return 'http://transcripts.cnn.com/TRANSCRIPTS/'+'2017.04.07'+'.html'
 
 #get transcript_ids (links endings) for each transcipt available
 def findNewTranscripts(mainPageLink):
@@ -45,9 +47,9 @@ def findNewTranscripts(mainPageLink):
 
 	return transcript_ids
 
-
+def similarity(x,y):
+	return SequenceMatcher(None,x, y).ratio()
 #scrape each transcript
-
 def scrapeFeed():
 	
 	linksToday = findNewTranscripts(cnnLink())
@@ -72,6 +74,7 @@ def scrapeFeed():
 			speakerIndeces = [] #find indices of speaker names
 			speakerChunks = [] #pieces of text w/speaker name
 			speakers = []
+			#speakerSet = {}
 			lastSpeaker = ''
 
 			#for m in re.finditer('[A-Z].{1,5}[A-Z]?:', stringscript):
@@ -92,12 +95,24 @@ def scrapeFeed():
 			speakerChunks.append(stringscript[end:stringscript.index('<br/></br></br></br>')]) #add last speaker chunk
 			speakers.append(lastSpeaker)
 
+			speakerSet = set(speakers)
+
+			for speaker in range(len(speakers)):
+				for otherspeaker in speakerSet:
+					#####HERE IS WHERE POINT 2 SHOULD GO
+					if ' ' in otherspeaker and otherspeaker.split(' ')[-1] == speakers[speaker]:
+						speakers[speaker] = otherspeaker
+					elif similarity(speakers[speaker],otherspeaker) > .465 and len(speakers[speaker]) < len(otherspeaker):
+						speakers[speaker] = otherspeaker
+
 			for speaker in speakers:
 				print(speaker)
 			print('-------------------------------')
 
+			# CHANGE CNNLINK METHOD BACK TO HOW IT SHOULD BE
 			# Where I am now:
-			# Need to cut off party suffixes; need to make sure that firstname_lastname and last_name refer to same person
+			# If there is at least one word in common between entries in speakers and speakerSet 
+			# and its length is >=5, speakers[speaker] = otherspeaker
 			# need to end this method by returning speakers, speakerchunks and pass those to another function
 			# and that function will interact with the api!
 			
