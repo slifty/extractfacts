@@ -5,6 +5,7 @@ from pytz import timezone
 import psycopg2
 import re
 import requests
+import json
 
 
 #connect sql 
@@ -29,8 +30,8 @@ def getFormattedDate():
 
 #return today's CNN transcript page URL
 def cnnLink():
-	#return 'http://transcripts.cnn.com/TRANSCRIPTS/'+getFormattedDate()+'.html'
-	return 'http://transcripts.cnn.com/TRANSCRIPTS/'+'2017.04.07'+'.html'
+	return 'http://transcripts.cnn.com/TRANSCRIPTS/'+getFormattedDate()+'.html'
+	#return 'http://transcripts.cnn.com/TRANSCRIPTS/'+'2017.04.07'+'.html'
 
 #get transcript_ids (links endings) for each transcipt available
 def findNewTranscripts(mainPageLink):
@@ -47,6 +48,8 @@ def findNewTranscripts(mainPageLink):
 
 	return transcript_ids
 
+#return similarity of phrases
+#using SequenceMatcher because it throws out junk and scores whole word matching highly
 def similarity(x,y):
 	return SequenceMatcher(None,x, y).ratio()
 #scrape each transcript
@@ -96,28 +99,32 @@ def scrapeFeed():
 			speakers.append(lastSpeaker)
 
 			speakerSet = set(speakers)
-
+			
 			for speaker in range(len(speakers)):
 				for otherspeaker in speakerSet:
 					#####HERE IS WHERE POINT 2 SHOULD GO
-					if ' ' in otherspeaker and otherspeaker.split(' ')[-1] == speakers[speaker]:
+					#if ' ' in otherspeaker and otherspeaker.split(' ')[-1] == speakers[speaker]:
+						#speakers[speaker] = otherspeaker
+					if ' ' in otherspeaker and similarity(otherspeaker.split(' ')[-1], speakers[speaker]) > .7 and len(otherspeaker) < 25:
 						speakers[speaker] = otherspeaker
 					elif similarity(speakers[speaker],otherspeaker) > .465 and len(speakers[speaker]) < len(otherspeaker):
 						speakers[speaker] = otherspeaker
-
-			for speaker in speakers:
-				print(speaker)
+			
+			#for speaker,chunk in zip(speakers,speakerChunks):
+				#print(speaker,chunk)
 			print('-------------------------------')
-
 			# CHANGE CNNLINK METHOD BACK TO HOW IT SHOULD BE
 			# Where I am now:
 			# If there is at least one word in common between entries in speakers and speakerSet 
 			# and its length is >=5, speakers[speaker] = otherspeaker
 			# need to end this method by returning speakers, speakerchunks and pass those to another function
 			# and that function will interact with the api!
-			
-		except:
+
+			#not all of this method should be within the try except.......
+			return speakers, speakerChunks
+		except Exception as e:
 			print("error with this transcript")
+			print(e)
 
 scrapeFeed()
 
