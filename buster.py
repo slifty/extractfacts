@@ -8,7 +8,7 @@ import re
 import requests
 import json
 
-#todo:
+#todo: 
 	# 1. change cnnLink() back
 	# 2. change scrapeFeed to use findNewTranscripts() again (linksToday array)
 	# 3. establish a better primary key for the (speaker,claim,score,transcript_id) database. 
@@ -18,7 +18,10 @@ import json
 	# 7. comment better
 	# 8. Instead of running a bunch of execute statements for sequal insertions,  compile all dictionaries from\
 	# 	  claim buster into some data structure and run a batch_execute() on them
-
+	# 9. Create a unique id for claim. 
+	# 10. Two tables: (claim_id, claim, speaker, score, trans_id) AND (trans_id, show, date, text)
+	# 11. Possible new table: show,speaker
+	# 12. claim_id should be a hash of speaker, claim to prevent dupes
 #todo
 """
 #for speaker,chunk in zip(speakers,speakerChunks):
@@ -54,8 +57,8 @@ def getFormattedDate():
 
 #return today's CNN transcript page URL
 def cnnLink():
-	#return 'http://transcripts.cnn.com/TRANSCRIPTS/'+getFormattedDate()+'.html'
-	return 'http://transcripts.cnn.com/TRANSCRIPTS/'+'2017.04.07'+'.html'
+	return 'http://transcripts.cnn.com/TRANSCRIPTS/'+getFormattedDate()+'.html'
+	#return 'http://transcripts.cnn.com/TRANSCRIPTS/'+'2017.04.07'+'.html'
 
 #get transcript_ids (links endings) for each transcipt available
 def findNewTranscripts(mainPageLink):
@@ -80,8 +83,8 @@ def similarity(x,y):
 def scrapeFeed():
 	dic = {} #maps id to matching set of speakers/statements
 	
-	#linksToday = findNewTranscripts(cnnLink())
-	linksToday =  ['http://transcripts.cnn.com/TRANSCRIPTS/1704/11/cnr.17.html']
+	linksToday = findNewTranscripts(cnnLink())
+	#linksToday =  ['http://transcripts.cnn.com/TRANSCRIPTS/1704/11/cnr.17.html']
 	
 	for transcript_link in linksToday:
 
