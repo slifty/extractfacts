@@ -19,4 +19,7 @@ Find factual claims in daily CNN transcripts
 
 ## Coming soon
 
-...
+1. More efficient database insertions
+2. Creation of a new relation in the database holding a transcript id, a show name and a date
+3. Creation of hashed claim_ids for the clames relation 
+4. Revision of the code so that the program runs continuously rather than trying to scrape all transcripts once every 24 hours
