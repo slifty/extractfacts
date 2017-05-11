@@ -9,19 +9,16 @@ import requests
 import json
 
 #todo: 
-	# 1. change cnnLink() back
-	# 2. change scrapeFeed to use findNewTranscripts() again (linksToday array)
+	
 	# 3. establish a better primary key for the (speaker,claim,score,transcript_id) database. 
 	# 4. create the other database and load
 	# 5. create a process to keep this program running (or to check once/day)
 	# 6. Clean up the try except in the scrapeFeed() method
-	# 7. comment better
 	# 8. Instead of running a bunch of execute statements for sequal insertions,  compile all dictionaries from\
 	# 	  claim buster into some data structure and run a batch_execute() on them
-	# 9. Create a unique id for claim. 
+	# 9. Create a unique id for claim. Should be a hash of speaker, claim to prevent dupes
 	# 10. Two tables: (claim_id, claim, speaker, score, trans_id) AND (trans_id, show, date, text)
 	# 11. Possible new table: show,speaker
-	# 12. claim_id should be a hash of speaker, claim to prevent dupes
 #todo
 """
 #for speaker,chunk in zip(speakers,speakerChunks):
@@ -156,14 +153,16 @@ def scrapeFeed():
 			print("error with this transcript")
 			print(e)
 	return dic
-	#return speakers, speakerChunks
+
 
 
 
 #(speaker, claim, transcript id) (trnas id, trans text, show information)
 
 def submitClaimbuster(dic):
-	busterBase = 'http://idir-server2.uta.edu/claimbuster/API/score/text/'
+	count = 0
+	#busterBase = 'http://idir-server2.uta.edu/claimbuster/API/score/text/'
+	busterBase = 'http://idir-server2.uta.edu:80/factchecker/score_text/'
 	busterEnd = '?format=json'
 	for transFacts, chunks in dic.items():
 		speakers = chunks[0]
@@ -173,22 +172,22 @@ def submitClaimbuster(dic):
 			try:
 				chunk = chunk.replace('\n', '')
 				submissionLink = busterBase+chunk+busterEnd
-				jObject = requests.get(submissionLink).text
-				#print(jObject)
-				jObject = json.loads(jObject)
+				jObject = requests.get(submissionLink).json()
+				print(type(jObject))
 
-				for statement in list(jObject.values())[0]:
-					statement['claim'] = statement.pop('text')
+
+				for statement in jObject['results']:
 					statement['speaker'] = speaker
 					statement['score'] = round(statement['score'],3)
 					statement['trans_id'] = transFacts[0]
-					del statement['index']
-					#print(statement)
+					statement['claim'] = statement['text']
 					cur.execute(sqlClaims, statement)
+
 			except Exception as e:
 				print('api submission error')
 				print(e)
-				return;
+				count+=1
+				print(count)
 
 #scrapeFeed()
 submitClaimbuster(scrapeFeed())
