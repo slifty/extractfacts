@@ -11,8 +11,7 @@ import json
 import time
 
 #todo: 
-	
-	# 3. establish a better primary key for the (speaker,claim,score,transcript_id) database. 
+	# 1. Is it time to switch to mongo...?
 	# 4. create the other database and load
 	# 5. create a process to keep this program running (or to check once/day)
 	# 6. Clean up the try except in the scrapeFeed() method
@@ -21,18 +20,6 @@ import time
 	# 9. Create a unique id for claim. Should be a hash of speaker, claim to prevent dupes
 	# 10. Two tables: (claim_id, claim, speaker, score, trans_id) AND (trans_id, show, date, text)
 	# 11. Possible new table: show,speaker
-#todo
-"""
-#for speaker,chunk in zip(speakers,speakerChunks):
-				#print(speaker,chunk)
-			#print('-------------------------------')
-			# CHANGE CNNLINK METHOD BACK TO HOW IT SHOULD BE
-			# Where I am now:
-			# If there is at least one word in common between entries in speakers and speakerSet 
-			# and its length is >=5, speakers[speaker] = otherspeaker
-			# need to end this method by returning speakers, speakerchunks and pass those to another function
-			# and that function will interact with the api!
-"""
 
 
 #connect sql 
@@ -43,7 +30,7 @@ except:
 
 cur = conn.cursor()
 
-sqlClaims = '''INSERT INTO speak(speaker, score, claim,trans_id) VALUES (%(speaker)s, %(score)s, %(claim)s, %(trans_id)s)'''
+sqlClaims = '''INSERT INTO speak(speaker, score, claim,trans_id, claim_id) VALUES (%(speaker)s, %(score)s, %(claim)s, %(trans_id)s, %(claim_id)s) ON CONFLICT ON CONSTRAINT speak_pkey DO NOTHING'''
 #sqlDetails = '''INSERT INTO details('''
 
 
@@ -216,9 +203,7 @@ def submitClaimbuster(dic):
 					insert['score'] = round(statement['score'],3)
 					insert['trans_id'] = transFacts[0]
 					insert['claim'] = statement['text']
-					x = getClaimHash(speaker, statement['text'], transFacts[0])+'a'
-					#print(x)
-					insert['claim_id'] = x
+					insert['claim_id'] = getClaimHash(speaker, statement['text'], transFacts[0])
 					
 					cur.execute(sqlClaims, insert)
 					#should instead build a list of dictionaries and use execute_batch
