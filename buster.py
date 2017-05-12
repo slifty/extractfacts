@@ -3,10 +3,12 @@ from datetime import datetime
 from difflib import SequenceMatcher
 from psycopg2.extras import execute_batch
 from pytz import timezone
+import hashlib
 import psycopg2
 import re
 import requests
 import json
+import time
 
 #todo: 
 	
@@ -49,13 +51,16 @@ sqlClaims = '''INSERT INTO speak(speaker, score, claim,trans_id) VALUES (%(speak
 def getFormattedDate():
 	zone =  timezone('EST')
 	dateOnly = datetime.now(zone).strftime('%Y.%m.%d')
+	print('got date')
 	return dateOnly
 
 
 #return today's CNN transcript page URL
 def cnnLink():
+	print('got link')
 	return 'http://transcripts.cnn.com/TRANSCRIPTS/'+getFormattedDate()+'.html'
-	#return 'http://transcripts.cnn.com/TRANSCRIPTS/'+'2017.04.07'+'.html'
+	
+	#return 'http://transcripts.cnn.com/TRANSCRIPTS/2017.05.05.html'
 
 #get transcript_ids (links endings) for each transcipt available
 def findNewTranscripts(mainPageLink):
@@ -69,13 +74,53 @@ def findNewTranscripts(mainPageLink):
 			print(baseLink+anchor['href'])
 			transcript_ids.append(baseLink+anchor['href'])
 			#print()
-
+	print('got transcript urls')
 	return transcript_ids
 
 #return similarity of phrases
 #using SequenceMatcher because it throws out junk and scores whole word matching highly
 def similarity(x,y):
 	return SequenceMatcher(None,x, y).ratio()
+
+
+def cleanHtml(soup, details):
+	"""Remove some html tags and script transition statements from 'souped' page; extract header details """
+	soup.prettify()
+	print('it prettified')
+
+	show = soup.find_all('p',{'class': 'cnnTransStoryHead'})[-1]
+	details.append(show)
+	details.append(getFormattedDate().replace('.','-'))
+
+	transcript = soup.find_all('p',{'class': 'cnnBodyText'})[-1]
+	return re.sub('\(.*[A-Z].*[A-Z].*\)', '', str(transcript).replace('<br>','\n')) #remove html tags and transition statements
+
+def identifySpeakersStatements(stringscript):
+	#For each chunk of text in the transcript, separate a speaker's name from their speech
+	speakerChunks = []
+	speakers = []
+	lastSpeaker = ''
+	prevStart = 0
+
+	for m in re.finditer('[A-Z].*[A-Z] ?:', stringscript):
+		temp = m.group(0)
+		if ',' in temp:
+			temp = temp[:temp.find(',')]
+		if ':' in temp:
+			temp = temp[:temp.find(':')]
+
+		speakers.append(temp)
+		lastSpeaker = temp
+
+		if prevStart:
+			speakerChunks.append(stringscript[prevStart:m.start()])
+		prevStart = m.end()
+		end = m.end()
+
+	speakerChunks.append(stringscript[end:stringscript.index('<br/></br></br></br>')]) #add last speaker chunk
+	speakers.append(lastSpeaker)
+	return speakerChunks, speakers
+
 #scrape each transcript
 def scrapeFeed():
 	dic = {} #maps id to matching set of speakers/statements
@@ -85,7 +130,7 @@ def scrapeFeed():
 	
 	for transcript_link in linksToday:
 
-		personStatements = {} #!!!!!!!!
+		#personStatements = {} #!!!!!!!!
 		
 		unique_id = transcript_link[39:-5] #url ending
 		details = [unique_id] #contains unique id of transcript, show name, date 
@@ -93,26 +138,15 @@ def scrapeFeed():
 		soup = BeautifulSoup(curPage, 'html.parser')
 		
 		try: 
-			soup.prettify()
-			print('it prettified')
-			
-			show = soup.find_all('p',{'class': 'cnnTransStoryHead'})[-1]
-			details.append(show)
-			details.append(getFormattedDate().replace('.','-'))
-
-
-			transcript = soup.find_all('p',{'class': 'cnnBodyText'})[-1]
-			stringscript = re.sub('\(.*[A-Z].*[A-Z].*\)', '', str(transcript).replace('<br>','\n')) #remove html tags and transition statements
-
-			
+			stringscript = cleanHtml(soup, details)
+			#brokenText = identifySpeakersStatements(stringscript)
+			#speakerChunks = brokenText[0]
+			#speakers = brokenText[1]
 			prevStart = 0
-			speakerIndeces = [] #find indices of speaker names
 			speakerChunks = [] #pieces of text w/speaker name
 			speakers = []
-			#speakerSet = {}
 			lastSpeaker = ''
 
-			#for m in re.finditer('[A-Z].{1,5}[A-Z]?:', stringscript):
 			for m in re.finditer('[A-Z].*[A-Z] ?:', stringscript):
 				temp = m.group(0)
 				if ',' in temp:
@@ -124,19 +158,19 @@ def scrapeFeed():
 				lastSpeaker = temp
 
 				if prevStart:
-					speakerChunks.append(stringscript[prevStart:m.start()])
+					speakerChunks.append(stringscript[prevStart:m.start()].strip())
 				prevStart = m.end()
 				end = m.end()
+
 			speakerChunks.append(stringscript[end:stringscript.index('<br/></br></br></br>')]) #add last speaker chunk
 			speakers.append(lastSpeaker)
+			
+
 
 			speakerSet = set(speakers)
 			
 			for speaker in range(len(speakers)):
 				for otherspeaker in speakerSet:
-					#####HERE IS WHERE POINT 2 SHOULD GO
-					#if ' ' in otherspeaker and otherspeaker.split(' ')[-1] == speakers[speaker]:
-						#speakers[speaker] = otherspeaker
 					if ' ' in otherspeaker and similarity(otherspeaker.split(' ')[-1], speakers[speaker]) > .7 and len(otherspeaker) < 25:
 						speakers[speaker] = otherspeaker
 					elif similarity(speakers[speaker],otherspeaker) > .465 and len(speakers[speaker]) < len(otherspeaker):
@@ -145,19 +179,19 @@ def scrapeFeed():
 			details = tuple(details)
 			dic[details] = (speakers, speakerChunks)
 
-			
-			
-
-			
 		except Exception as e:
 			print("error with this transcript")
 			print(e)
 	return dic
 
 
+def getClaimHash(speaker, claim, trans_id):
+	hashString = speaker+claim+trans_id
+	hashByte = hashString.encode('utf-8')
+	hash_obj = hashlib.md5(hashByte)
+	#print(hash_obj.hexdigest())
+	return hash_obj.hexdigest()
 
-
-#(speaker, claim, transcript id) (trnas id, trans text, show information)
 
 def submitClaimbuster(dic):
 	count = 0
@@ -177,20 +211,29 @@ def submitClaimbuster(dic):
 
 
 				for statement in jObject['results']:
-					statement['speaker'] = speaker
-					statement['score'] = round(statement['score'],3)
-					statement['trans_id'] = transFacts[0]
-					statement['claim'] = statement['text']
-					cur.execute(sqlClaims, statement)
+					insert = {}
+					insert['speaker'] = speaker
+					insert['score'] = round(statement['score'],3)
+					insert['trans_id'] = transFacts[0]
+					insert['claim'] = statement['text']
+					x = getClaimHash(speaker, statement['text'], transFacts[0])+'a'
+					#print(x)
+					insert['claim_id'] = x
+					
+					cur.execute(sqlClaims, insert)
+					#should instead build a list of dictionaries and use execute_batch
 
 			except Exception as e:
 				print('api submission error')
 				print(e)
 				count+=1
 				print(count)
-
-#scrapeFeed()
-submitClaimbuster(scrapeFeed())
+x = time.time()
+dic = scrapeFeed()
+print(time.time()-x)
+submitClaimbuster(dic)
+#submitClaimbuster(scrapeFeed())
+#findNewTranscripts(cnnLink())
 
 conn.commit()
 cur.close()
