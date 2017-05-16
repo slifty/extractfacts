@@ -45,9 +45,9 @@ def getFormattedDate():
 #return today's CNN transcript page URL
 def cnnLink():
 	print('got link')
-	return 'http://transcripts.cnn.com/TRANSCRIPTS/'+getFormattedDate()+'.html'
+	#return 'http://transcripts.cnn.com/TRANSCRIPTS/'+getFormattedDate()+'.html'
 	
-	#return 'http://transcripts.cnn.com/TRANSCRIPTS/2017.05.05.html'
+	return 'http://transcripts.cnn.com/TRANSCRIPTS/2017.05.05.html'
 
 #get transcript_ids (links endings) for each transcipt available
 def findNewTranscripts(mainPageLink):
@@ -67,6 +67,8 @@ def findNewTranscripts(mainPageLink):
 #return similarity of phrases
 #using SequenceMatcher because it throws out junk and scores whole word matching highly
 def similarity(x,y):
+	"""Find similarity between two strings using seuencematcher. Looks for "longest contiguous matching subsequence" 
+	"""
 	return SequenceMatcher(None,x, y).ratio()
 
 
@@ -108,6 +110,18 @@ def identifySpeakersStatements(stringscript):
 	speakers.append(lastSpeaker)
 	return speakerChunks, speakers
 
+def refineSpeakers(speakers):
+	speakerSet = set(speakers)
+
+	for speaker in range(len(speakers)):
+		for otherspeaker in speakerSet:
+			if ' ' in otherspeaker and similarity(otherspeaker.split(' ')[-1], speakers[speaker]) > .7 and len(otherspeaker) < 25:
+				speakers[speaker] = otherspeaker
+			elif similarity(speakers[speaker],otherspeaker) > .465 and len(speakers[speaker]) < len(otherspeaker):
+				speakers[speaker] = otherspeaker
+	return speakers
+
+
 #scrape each transcript
 def scrapeFeed():
 	dic = {} #maps id to matching set of speakers/statements
@@ -126,43 +140,20 @@ def scrapeFeed():
 		
 		try: 
 			stringscript = cleanHtml(soup, details)
-			#brokenText = identifySpeakersStatements(stringscript)
-			#speakerChunks = brokenText[0]
-			#speakers = brokenText[1]
-			prevStart = 0
-			speakerChunks = [] #pieces of text w/speaker name
-			speakers = []
-			lastSpeaker = ''
-
-			for m in re.finditer('[A-Z].*[A-Z] ?:', stringscript):
-				temp = m.group(0)
-				if ',' in temp:
-					temp = temp[:temp.find(',')]
-				if ':' in temp:
-					temp = temp[:temp.find(':')]
-
-				speakers.append(temp)
-				lastSpeaker = temp
-
-				if prevStart:
-					speakerChunks.append(stringscript[prevStart:m.start()].strip())
-				prevStart = m.end()
-				end = m.end()
-
-			speakerChunks.append(stringscript[end:stringscript.index('<br/></br></br></br>')]) #add last speaker chunk
-			speakers.append(lastSpeaker)
-			
-
+			brokenText = identifySpeakersStatements(stringscript)
+			speakerChunks = brokenText[0]
+			speakers = brokenText[1]
 
 			speakerSet = set(speakers)
 			
-			for speaker in range(len(speakers)):
+			"""for speaker in range(len(speakers)):
 				for otherspeaker in speakerSet:
 					if ' ' in otherspeaker and similarity(otherspeaker.split(' ')[-1], speakers[speaker]) > .7 and len(otherspeaker) < 25:
 						speakers[speaker] = otherspeaker
 					elif similarity(speakers[speaker],otherspeaker) > .465 and len(speakers[speaker]) < len(otherspeaker):
-						speakers[speaker] = otherspeaker
+						speakers[speaker] = otherspeaker"""
 
+			speakers = refineSpeakers(speakers)
 			details = tuple(details)
 			dic[details] = (speakers, speakerChunks)
 
@@ -213,13 +204,11 @@ def submitClaimbuster(dic):
 				print(e)
 				count+=1
 				print(count)
-x = time.time()
-dic = scrapeFeed()
-print(time.time()-x)
-submitClaimbuster(dic)
-#submitClaimbuster(scrapeFeed())
-#findNewTranscripts(cnnLink())
 
+dic = scrapeFeed()
+x = time.time()
+submitClaimbuster(dic)
+print(time.time()-x)
 conn.commit()
 cur.close()
 
