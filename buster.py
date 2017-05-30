@@ -15,9 +15,6 @@ import time
 	# 4. create the other database and load
 	# 5. create a process to keep this program running (or to check once/day)
 	# 6. Clean up the try except in the scrapeFeed() method
-	# 8. Instead of running a bunch of execute statements for sequal insertions,  compile all dictionaries from\
-	# 	  claim buster into some data structure and run a batch_execute() on them
-	# 9. Create a unique id for claim. Should be a hash of speaker, claim to prevent dupes
 	# 10. Two tables: (claim_id, claim, speaker, score, trans_id) AND (trans_id, show, date, text)
 	# 11. Possible new table: show,speaker
 
@@ -45,9 +42,9 @@ def getFormattedDate():
 #return today's CNN transcript page URL
 def cnnLink():
 	print('got link')
-	#return 'http://transcripts.cnn.com/TRANSCRIPTS/'+getFormattedDate()+'.html'
+	return 'http://transcripts.cnn.com/TRANSCRIPTS/'+getFormattedDate()+'.html'
 	
-	return 'http://transcripts.cnn.com/TRANSCRIPTS/2017.05.05.html'
+	#return 'http://transcripts.cnn.com/TRANSCRIPTS/2017.05.05.html'
 
 #get transcript_ids (links endings) for each transcipt available
 def findNewTranscripts(mainPageLink):
@@ -60,15 +57,12 @@ def findNewTranscripts(mainPageLink):
 		for anchor in piece.find_all('a', href = True):
 			print(baseLink+anchor['href'])
 			transcript_ids.append(baseLink+anchor['href'])
-			#print()
+
 	print('got transcript urls')
 	return transcript_ids
 
-#return similarity of phrases
-#using SequenceMatcher because it throws out junk and scores whole word matching highly
 def similarity(x,y):
-	"""Find similarity between two strings using seuencematcher. Looks for "longest contiguous matching subsequence" 
-	"""
+	"""Find similarity between two strings using seuencematcher. Looks for "longest contiguous matching subsequence" 	"""
 	return SequenceMatcher(None,x, y).ratio()
 
 
@@ -124,14 +118,12 @@ def refineSpeakers(speakers):
 
 #scrape each transcript
 def scrapeFeed():
-	dic = {} #maps id to matching set of speakers/statements
+	dic = {} #maps a transcript's details to the set of speakers and statements that comprise the transcript
 	
 	linksToday = findNewTranscripts(cnnLink())
 	#linksToday =  ['http://transcripts.cnn.com/TRANSCRIPTS/1704/11/cnr.17.html']
 	
 	for transcript_link in linksToday:
-
-		#personStatements = {} #!!!!!!!!
 		
 		unique_id = transcript_link[39:-5] #url ending
 		details = [unique_id] #contains unique id of transcript, show name, date 
@@ -145,14 +137,6 @@ def scrapeFeed():
 			speakers = brokenText[1]
 
 			speakerSet = set(speakers)
-			
-			"""for speaker in range(len(speakers)):
-				for otherspeaker in speakerSet:
-					if ' ' in otherspeaker and similarity(otherspeaker.split(' ')[-1], speakers[speaker]) > .7 and len(otherspeaker) < 25:
-						speakers[speaker] = otherspeaker
-					elif similarity(speakers[speaker],otherspeaker) > .465 and len(speakers[speaker]) < len(otherspeaker):
-						speakers[speaker] = otherspeaker"""
-
 			speakers = refineSpeakers(speakers)
 			details = tuple(details)
 			dic[details] = (speakers, speakerChunks)
@@ -167,13 +151,12 @@ def getClaimHash(speaker, claim, trans_id):
 	hashString = speaker+claim+trans_id
 	hashByte = hashString.encode('utf-8')
 	hash_obj = hashlib.md5(hashByte)
-	#print(hash_obj.hexdigest())
 	return hash_obj.hexdigest()
 
+listem = []
 
 def submitClaimbuster(dic):
 	count = 0
-	#busterBase = 'http://idir-server2.uta.edu/claimbuster/API/score/text/'
 	busterBase = 'http://idir-server2.uta.edu:80/factchecker/score_text/'
 	busterEnd = '?format=json'
 	for transFacts, chunks in dic.items():
@@ -185,7 +168,7 @@ def submitClaimbuster(dic):
 				chunk = chunk.replace('\n', '')
 				submissionLink = busterBase+chunk+busterEnd
 				jObject = requests.get(submissionLink).json()
-				print(type(jObject))
+				print("type", type(jObject))
 
 
 				for statement in jObject['results']:
@@ -196,8 +179,8 @@ def submitClaimbuster(dic):
 					insert['claim'] = statement['text']
 					insert['claim_id'] = getClaimHash(speaker, statement['text'], transFacts[0])
 					
-					cur.execute(sqlClaims, insert)
-					#should instead build a list of dictionaries and use execute_batch
+					#cur.execute(sqlClaims, insert)
+					listem.append(insert)
 
 			except Exception as e:
 				print('api submission error')
@@ -205,12 +188,17 @@ def submitClaimbuster(dic):
 				count+=1
 				print(count)
 
-dic = scrapeFeed()
+
+		print(transFacts)
 x = time.time()
+dic = scrapeFeed()
+print('CNN feed scraped')
 submitClaimbuster(dic)
-print(time.time()-x)
+execute_batch(cur, sqlClaims, listem)
+#reset listem afterwards?
 conn.commit()
 cur.close()
+print('elapsed', time.time()-x)
 
 if conn is not None:
 	conn.close()
