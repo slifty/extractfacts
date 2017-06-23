@@ -12,11 +12,8 @@ import time
 
 #todo: 
 	# 1. Is it time to switch to mongo...?
-	# 4. create the other database and load
 	# 5. create a process to keep this program running (or to check once/day)
-	# 6. Clean up the try except in the scrapeFeed() method
 	# 10. Two tables: (claim_id, claim, speaker, score, trans_id) AND (trans_id, show, date, text)
-	# 11. Possible new table: show,speaker
 
 
 #connect sql 
@@ -35,13 +32,13 @@ sqlClaims = '''INSERT INTO speak(speaker, score, claim,trans_id, claim_id) VALUE
 def getFormattedDate():
 	zone =  timezone('EST')
 	dateOnly = datetime.now(zone).strftime('%Y.%m.%d')
-	print('got date')
+	#print('got date')
 	return dateOnly
 
 
 #return today's CNN transcript page URL
 def cnnLink():
-	print('got link')
+	#print('got link')
 	return 'http://transcripts.cnn.com/TRANSCRIPTS/'+getFormattedDate()+'.html'
 	
 	#return 'http://transcripts.cnn.com/TRANSCRIPTS/2017.05.05.html'
@@ -55,10 +52,10 @@ def findNewTranscripts(mainPageLink):
 	soup.prettify()
 	for piece in soup.find_all('div', {'class': 'cnnSectBulletItems'}):
 		for anchor in piece.find_all('a', href = True):
-			print(baseLink+anchor['href'])
+			#print(baseLink+anchor['href'])
 			transcript_ids.append(baseLink+anchor['href'])
-
-	print('got transcript urls')
+	print(len(transcript_ids), 'transcripts found')
+	#print('got transcript urls')
 	return transcript_ids
 
 def similarity(x,y):
@@ -69,7 +66,7 @@ def similarity(x,y):
 def cleanHtml(soup, details):
 	"""Remove some html tags and script transition statements from 'souped' page; extract header details """
 	soup.prettify()
-	print('it prettified')
+	#print('it prettified')
 
 	show = soup.find_all('p',{'class': 'cnnTransStoryHead'})[-1]
 	details.append(show)
@@ -118,6 +115,7 @@ def refineSpeakers(speakers):
 
 #scrape each transcript
 def scrapeFeed():
+	numErrors = 0
 	dic = {} #maps a transcript's details to the set of speakers and statements that comprise the transcript
 	
 	linksToday = findNewTranscripts(cnnLink())
@@ -142,8 +140,10 @@ def scrapeFeed():
 			dic[details] = (speakers, speakerChunks)
 
 		except Exception as e:
-			print("error with this transcript")
-			print(e)
+			numErrors+=1
+			#print('error', e)
+	print(numErrors, 'bad transcripts thrown out.')
+	print(len(linksToday) - numErrors, 'transcripts sucessfully processed')
 	return dic
 
 
@@ -156,7 +156,9 @@ def getClaimHash(speaker, claim, trans_id):
 listem = []
 
 def submitClaimbuster(dic):
-	count = 0
+	print('Submitting claims to Claimbuster')
+	numErrors = 0
+	numClaims = 0
 	busterBase = 'http://idir-server2.uta.edu:80/factchecker/score_text/'
 	busterEnd = '?format=json'
 	for transFacts, chunks in dic.items():
@@ -168,7 +170,7 @@ def submitClaimbuster(dic):
 				chunk = chunk.replace('\n', '')
 				submissionLink = busterBase+chunk+busterEnd
 				jObject = requests.get(submissionLink).json()
-				print("type", type(jObject))
+				#print("type", type(jObject))
 
 
 				for statement in jObject['results']:
@@ -180,27 +182,32 @@ def submitClaimbuster(dic):
 					insert['claim_id'] = getClaimHash(speaker, statement['text'], transFacts[0])
 					
 					#cur.execute(sqlClaims, insert)
+					numClaims+=1
 					listem.append(insert)
+					if numClaims%100 == 0: 
+						print(numClaims,'claims processed')
 
 			except Exception as e:
-				print('api submission error')
-				print(e)
-				count+=1
-				print(count)
+				numErrors+=1
 
 
-		print(transFacts)
+	print("errors submitting to api:", numErrors)
+
+def insertDatabase():
+	execute_batch(cur, sqlClaims, listem)
+	#reset listem afterwards?
+	conn.commit()
+	cur.close()
+	if conn is not None:
+		conn.close()
+
+
 x = time.time()
 dic = scrapeFeed()
-print('CNN feed scraped')
 submitClaimbuster(dic)
-execute_batch(cur, sqlClaims, listem)
-#reset listem afterwards?
-conn.commit()
-cur.close()
+insertDatabase()
 print('elapsed', time.time()-x)
 
-if conn is not None:
-	conn.close()
+
 #while(1):
 #	doInserts()
