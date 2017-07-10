@@ -13,7 +13,7 @@ import time
 #todo: 
 	# 1. Is it time to switch to mongo...?
 	# 5. create a process to keep this program running (or to check once/day)
-	# 10. Two tables: (claim_id, claim, speaker, score, trans_id) AND (trans_id, show, date, text)
+	# 10. Two tables: (claim_id, claim, speaker, score, trans_id) AND (trans_id, show, date,sdfdsfsdfsdfdsjfl text)
 
 
 #connect sql 
