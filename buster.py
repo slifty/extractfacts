@@ -9,6 +9,8 @@ import re
 import requests
 import json
 import time
+import sys, os
+
 
 #todo: 
 	# 1. Is it time to switch to mongo...?
@@ -19,6 +21,7 @@ import time
 #connect sql 
 try:
 	conn = psycopg2.connect("dbname = 'practice' user = 'postgres' host = 'localhost' password = 'butt'")
+	#print('yeah goteem')
 except:
 	print("Can't connect to the database")
 
@@ -32,13 +35,12 @@ sqlClaims = '''INSERT INTO speak(speaker, score, claim,trans_id, claim_id) VALUE
 def getFormattedDate():
 	zone =  timezone('EST')
 	dateOnly = datetime.now(zone).strftime('%Y.%m.%d')
-	#print('got date')
+	print('---------',dateOnly,'---------')
 	return dateOnly
 
 
 #return today's CNN transcript page URL
 def cnnLink():
-	#print('got link')
 	return 'http://transcripts.cnn.com/TRANSCRIPTS/'+getFormattedDate()+'.html'
 	
 	#return 'http://transcripts.cnn.com/TRANSCRIPTS/2017.05.05.html'
@@ -66,42 +68,48 @@ def similarity(x,y):
 def cleanHtml(soup, details):
 	"""Remove some html tags and script transition statements from 'souped' page; extract header details """
 	soup.prettify()
-	#print('it prettified')
 
-	show = soup.find_all('p',{'class': 'cnnTransStoryHead'})[-1]
-	details.append(show)
-	details.append(getFormattedDate().replace('.','-'))
+	show = soup.find_all('p',{'class': 'cnnTransStoryHead'}) #CNN labels the show name with this html class
 
-	transcript = soup.find_all('p',{'class': 'cnnBodyText'})[-1]
-	return re.sub('\(.*[A-Z].*[A-Z].*\)', '', str(transcript).replace('<br>','\n')) #remove html tags and transition statements
+
+	transcript = soup.find_all('p',{'class': 'cnnBodyText'})[-1] #transcript contained in last element of this class
+	tag1 = str(transcript).replace('<br>','\n') #
+	tag2 = tag1.replace('<br/>', '\n')
+	#print(tag2)
+	return tag2
 
 def identifySpeakersStatements(stringscript):
-	#For each chunk of text in the transcript, separate a speaker's name from their speech
+	"""extract speakers and claims from transcripts"""
 	speakerChunks = []
 	speakers = []
 	lastSpeaker = ''
 	prevStart = 0
+	end = 1
 
 	for m in re.finditer('[A-Z].*[A-Z] ?:', stringscript):
 		temp = m.group(0)
+		#print(temp)
 		if ',' in temp:
 			temp = temp[:temp.find(',')]
 		if ':' in temp:
 			temp = temp[:temp.find(':')]
 
 		speakers.append(temp)
+		#print(speakers[-1])
 		lastSpeaker = temp
 
 		if prevStart:
 			speakerChunks.append(stringscript[prevStart:m.start()])
+			#print(speakerChunks[-1])
 		prevStart = m.end()
 		end = m.end()
 
-	speakerChunks.append(stringscript[end:stringscript.index('<br/></br></br></br>')]) #add last speaker chunk
-	speakers.append(lastSpeaker)
+	#speakerChunks.append(stringscript[end:stringscript.index('<br/></br></br></br>')]) #add last speaker chunk
+	#speakers.append(lastSpeaker)
 	return speakerChunks, speakers
 
 def refineSpeakers(speakers):
+	"""Lop titles off names; match last name references to firstname-lastname referfences"""
 	speakerSet = set(speakers)
 
 	for speaker in range(len(speakers)):
@@ -113,11 +121,11 @@ def refineSpeakers(speakers):
 	return speakers
 
 
-#scrape each transcript
 def scrapeFeed():
+	""" Use above methods to find cnn transcripts, scrape them and organize them into usable data"""
 	numErrors = 0
 	dic = {} #maps a transcript's details to the set of speakers and statements that comprise the transcript
-	
+
 	linksToday = findNewTranscripts(cnnLink())
 	#linksToday =  ['http://transcripts.cnn.com/TRANSCRIPTS/1704/11/cnr.17.html']
 	
@@ -141,13 +149,14 @@ def scrapeFeed():
 
 		except Exception as e:
 			numErrors+=1
-			#print('error', e)
+			print('error:', e)
 	print(numErrors, 'bad transcripts thrown out.')
 	print(len(linksToday) - numErrors, 'transcripts sucessfully processed')
 	return dic
 
 
 def getClaimHash(speaker, claim, trans_id):
+	"""Create a hash value from the text of a claim, the claim's speaker and the transcript id(show/date)"""
 	hashString = speaker+claim+trans_id
 	hashByte = hashString.encode('utf-8')
 	hash_obj = hashlib.md5(hashByte)
@@ -156,6 +165,7 @@ def getClaimHash(speaker, claim, trans_id):
 listem = []
 
 def submitClaimbuster(dic):
+	"""Submit chunks of text to the Claimbuster API for scoring. """
 	print('Submitting claims to Claimbuster')
 	numErrors = 0
 	numClaims = 0
@@ -168,6 +178,7 @@ def submitClaimbuster(dic):
 		for speaker, chunk in zip(speakers, speakerChunks):
 			try:
 				chunk = chunk.replace('\n', '')
+				#print(chunk)
 				submissionLink = busterBase+chunk+busterEnd
 				jObject = requests.get(submissionLink).json()
 				#print("type", type(jObject))
@@ -177,8 +188,10 @@ def submitClaimbuster(dic):
 					insert = {}
 					insert['speaker'] = speaker
 					insert['score'] = round(statement['score'],3)
+					#print(insert['score'])
 					insert['trans_id'] = transFacts[0]
-					insert['claim'] = statement['text']
+					#print(statement['text'])
+					insert['claim'] = statement['text'].replace('+', ' ')
 					insert['claim_id'] = getClaimHash(speaker, statement['text'], transFacts[0])
 					
 					#cur.execute(sqlClaims, insert)
@@ -188,12 +201,14 @@ def submitClaimbuster(dic):
 						print(numClaims,'claims processed')
 
 			except Exception as e:
+				print('error',e)
 				numErrors+=1
 
 
-	print("errors submitting to api:", numErrors)
+	print("API submission errors:", numErrors)
 
 def insertDatabase():
+	"""Insert scored claims into postgres database""" 
 	execute_batch(cur, sqlClaims, listem)
 	#reset listem afterwards?
 	conn.commit()
@@ -202,12 +217,11 @@ def insertDatabase():
 		conn.close()
 
 
+#if date.time = 2300h, do all of this stuff:
+
 x = time.time()
 dic = scrapeFeed()
 submitClaimbuster(dic)
 insertDatabase()
-print('elapsed', time.time()-x)
+print('elapsed time:', time.time()-x, 'seconds')
 
-
-#while(1):
-#	doInserts()

@@ -1,8 +1,0 @@
-todo
-
-1. Setup website to hold database and make it accessible FIRST
-2. Create script to send fact checks to reporters every day SECOND
-	a. Email to politifact, factcheck, new york times, washington post
-
-
-	1635
