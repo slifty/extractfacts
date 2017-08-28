@@ -149,7 +149,7 @@ def scrapeFeed():
 
 		except Exception as e:
 			numErrors+=1
-			print('error:', e)
+			print('continuing despite error:', e)
 	print(numErrors, 'bad transcripts thrown out.')
 	print(len(linksToday) - numErrors, 'transcripts sucessfully processed')
 	return dic
