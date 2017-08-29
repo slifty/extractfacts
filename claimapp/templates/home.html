@@ -1,0 +1,28 @@
+{% extends 'layout/layout.html' %}
+<!-- load django tables -->
+<!DOCTYPE html>
+
+{% block atitle %}home{% endblock %}
+
+{% block navbar %}
+              <li><a href="/#">Home</a></li>
+{% endblock %}
+
+{% block content %}
+
+<div class="jumbotron" align="center">
+     <div class="container">
+        <h1><font size = "8">Search a person</font></h1>
+        <p><form method = 'POST' action = ''>
+            <label for="person"></label>
+            {% csrf_token %}<input type = "text" name = "person" placeholder = "name">
+            
+            {{ form.name }}
+
+            <input type = 'submit' value = 'Search' /></form>
+        </p>
+     </div>
+</div>
+
+{% endblock %}
+

@@ -201,7 +201,7 @@ def submitClaimbuster(dic):
 						print(numClaims,'claims processed')
 
 			except Exception as e:
-				print('error',e)
+				print('continuing despite error:',e)
 				numErrors+=1
 
 
