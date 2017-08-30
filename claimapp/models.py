@@ -8,6 +8,7 @@ class Speak(models.Model):
     score = models.FloatField(blank=True, null=True)
     trans_id = models.TextField(blank=True, null=True)
     claim_id = models.TextField(primary_key=True)
+    date = models.DateField(blank=True, null=True)
 
     class Meta:
         managed = False

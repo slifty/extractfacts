@@ -26,14 +26,15 @@ except:
 	print("Can't connect to the database")
 
 cur = conn.cursor()
+zone =  timezone('EST')
 
-sqlClaims = '''INSERT INTO speak(speaker, score, claim,trans_id, claim_id) VALUES (%(speaker)s, %(score)s, %(claim)s, %(trans_id)s, %(claim_id)s) ON CONFLICT ON CONSTRAINT speak_pkey DO NOTHING'''
+sqlClaims = '''INSERT INTO speak(speaker, score, claim,trans_id, claim_id, date) VALUES (%(speaker)s, %(score)s, %(claim)s, %(trans_id)s, %(claim_id)s, %(date)s) ON CONFLICT ON CONSTRAINT speak_pkey DO NOTHING'''
 #sqlDetails = '''INSERT INTO details('''
 
 
 #get date in CNN URL format
 def getFormattedDate():
-	zone =  timezone('EST')
+	#zone =  timezone('EST')
 	dateOnly = datetime.now(zone).strftime('%Y.%m.%d')
 	print('---------',dateOnly,'---------')
 	return dateOnly
@@ -193,6 +194,8 @@ def submitClaimbuster(dic):
 					#print(statement['text'])
 					insert['claim'] = statement['text'].replace('+', ' ')
 					insert['claim_id'] = getClaimHash(speaker, statement['text'], transFacts[0])
+					insert['date'] = datetime.now(zone).strftime('%m/%d/%y')
+
 					
 					#cur.execute(sqlClaims, insert)
 					numClaims+=1
