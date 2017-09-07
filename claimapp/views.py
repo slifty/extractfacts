@@ -9,6 +9,10 @@ class pTable(tables.Table):
 	class Meta:
 		model = models.Speak
 
+class dTable(tables.Table):
+	class Meta:
+		model = models.Speak
+
 def index (request):
 
 	title = "Main page"
@@ -31,7 +35,7 @@ def index (request):
 			return render(request, 'view.html', context)
 		else:
 			print('invalid form!?')
-			return HttpResponse('Uhhhh this should\'ve worked')
+			return HttpResponse('Uhhhh this should\'ve worked') #RENDER TO ANOTHER PAGE AND THE ERRORS/DOUBLE BOX MIGHT STOP!!!!!!!!!!
 
 	elif request.method == 'GET':
 		context = {
@@ -41,5 +45,30 @@ def index (request):
 
 		return render(request, 'home.html',context)
 
+def dates(request):
+	title = "Dates"
+	form = forms.dateSearch(request.POST or None)
 
-	
+	if request.method == 'POST':
+
+		if form.is_valid():
+			inDate = form.cleaned_data['Dates']
+
+			qs = models.Speak.objects.filter(date = inDate)
+			table = dTable(qs)
+
+			context = {
+				'tilte': title,
+				'table': table,
+			}
+			return render(rquest, 'Dates.html', context)
+		else:
+			print(form.errors)
+			return HttpResponse('REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\t' + str(form.errors)) #RENDER TO ANOTHER PAGE AND THE ERRORS MIGHT STOP!!!!!!!!!!
+	#elif request.method == 'GET':
+	else:
+		context = {
+		'title': title,
+		'form': form,
+		}
+		return render(request, 'Dates.html', context)

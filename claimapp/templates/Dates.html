@@ -1,0 +1,39 @@
+{% extends 'layout/layout.html' %}
+<!-- load django tables -->
+<!DOCTYPE html>
+<head>
+<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/themes/smoothness/jquery-ui.css">
+</head>
+{% block atitle %}Dates{% endblock %}
+
+{% block navbar %}
+              <li><a href="/#">Home</a></li>
+              <li><a href="/Dates">Dates</a></li>
+{% endblock %}
+
+{% block content %}
+
+<div class="jumbotron" align="center">
+  <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+  <script>
+    $( function() {
+      $( "#datepicker" ).datepicker();
+    });
+  </script>
+</div>
+
+<p>Date: <input type="text" id="datepicker"></p>
+
+
+<p>
+  <form method = 'POST' action = ''>
+    <label for="Dates"></label>
+    {% csrf_token %}<input id = "datepicker">
+     
+
+    <input type = 'submit' value = 'Search' />
+  </form>
+</p>
+{% endblock %}
+

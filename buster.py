@@ -18,7 +18,7 @@ import sys, os
 	# 10. Two tables: (claim_id, claim, speaker, score, trans_id) AND (trans_id, show, date,sdfdsfsdfsdfdsjfl text)
 
 
-#connect sql 
+#connect sql  
 try:
 	conn = psycopg2.connect("dbname = 'practice' user = 'postgres' host = 'localhost' password = 'butt'")
 	#print('yeah goteem')
@@ -26,15 +26,14 @@ except:
 	print("Can't connect to the database")
 
 cur = conn.cursor()
-zone =  timezone('EST')
 
-sqlClaims = '''INSERT INTO speak(speaker, score, claim,trans_id, claim_id, date) VALUES (%(speaker)s, %(score)s, %(claim)s, %(trans_id)s, %(claim_id)s, %(date)s) ON CONFLICT ON CONSTRAINT speak_pkey DO NOTHING'''
+sqlClaims = '''INSERT INTO speak(speaker, score, claim,trans_id, claim_id) VALUES (%(speaker)s, %(score)s, %(claim)s, %(trans_id)s, %(claim_id)s) ON CONFLICT ON CONSTRAINT speak_pkey DO NOTHING'''
 #sqlDetails = '''INSERT INTO details('''
 
 
 #get date in CNN URL format
 def getFormattedDate():
-	#zone =  timezone('EST')
+	zone =  timezone('EST')
 	dateOnly = datetime.now(zone).strftime('%Y.%m.%d')
 	print('---------',dateOnly,'---------')
 	return dateOnly
@@ -194,8 +193,6 @@ def submitClaimbuster(dic):
 					#print(statement['text'])
 					insert['claim'] = statement['text'].replace('+', ' ')
 					insert['claim_id'] = getClaimHash(speaker, statement['text'], transFacts[0])
-					insert['date'] = datetime.now(zone).strftime('%m/%d/%y')
-
 					
 					#cur.execute(sqlClaims, insert)
 					numClaims+=1
@@ -204,7 +201,7 @@ def submitClaimbuster(dic):
 						print(numClaims,'claims processed')
 
 			except Exception as e:
-				print('continuing despite error:',e)
+				print('error',e)
 				numErrors+=1
 
 

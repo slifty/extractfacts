@@ -16,8 +16,10 @@ Including another URLconf
 from django.conf.urls import url
 from django.contrib import admin
 from claimapp.views import index
+from claimapp.views import dates
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^$', index, name = 'homes'),
+    url(r'^Dates/', dates, name = 'Dates'),
 ]
