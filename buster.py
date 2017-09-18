@@ -9,6 +9,7 @@ import re
 import requests
 import json
 import time
+import random
 import sys, os
 
 
@@ -156,8 +157,8 @@ def scrapeFeed():
 
 
 def getClaimHash(speaker, claim, trans_id):
-	"""Create a hash value from the text of a claim, the claim's speaker and the transcript id(show/date)"""
-	hashString = speaker+claim+trans_id
+	"""Create a hash value from the text of a claim, the claim's speaker, the transcript id(show/date) and a random number"""
+	hashString = speaker+claim+trans_id+str(random.randint(0,500))
 	hashByte = hashString.encode('utf-8')
 	hash_obj = hashlib.md5(hashByte)
 	return hash_obj.hexdigest()
