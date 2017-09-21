@@ -13,11 +13,6 @@ import random
 import sys, os
 
 
-#todo: 
-	# 1. Is it time to switch to mongo...?
-	# 5. create a process to keep this program running (or to check once/day)
-	# 10. Two tables: (claim_id, claim, speaker, score, trans_id) AND (trans_id, show, date,sdfdsfsdfsdfdsjfl text)
-
 
 #connect sql  
 try:
@@ -30,7 +25,7 @@ cur = conn.cursor()
 
 sqlClaims = '''INSERT INTO speak(speaker, score, claim,trans_id, claim_id) VALUES (%(speaker)s, %(score)s, %(claim)s, %(trans_id)s, %(claim_id)s) ON CONFLICT ON CONSTRAINT speak_pkey DO NOTHING'''
 #sqlDetails = '''INSERT INTO details('''
-
+sqlScript = '''INSERT INTO transcript(trans_id, script) VALUES (%(trans_id)s, %(script)s) ON CONFLICT ON CONSTRAINT transcript_pkey DO NOTHING'''
 
 #get date in CNN URL format
 def getFormattedDate():
@@ -126,7 +121,7 @@ def scrapeFeed():
 	""" Use above methods to find cnn transcripts, scrape them and organize them into usable data"""
 	numErrors = 0
 	dic = {} #maps a transcript's details to the set of speakers and statements that comprise the transcript
-
+	scriptSet = []
 	linksToday = findNewTranscripts(cnnLink())
 	#linksToday =  ['http://transcripts.cnn.com/TRANSCRIPTS/1704/11/cnr.17.html']
 	
@@ -147,10 +142,14 @@ def scrapeFeed():
 			speakers = refineSpeakers(speakers)
 			details = tuple(details)
 			dic[details] = (speakers, speakerChunks)
+			scriptSet.append({'trans_id': details[0], 'script' : stringscript})
+
+
 
 		except Exception as e:
 			numErrors+=1
 			print('continuing despite error:', e)
+	execute_batch(cur, sqlScript, scriptSet)
 	print(numErrors, 'bad transcripts thrown out.')
 	print(len(linksToday) - numErrors, 'transcripts sucessfully processed')
 	return dic
