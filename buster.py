@@ -23,7 +23,7 @@ except:
 
 cur = conn.cursor()
 
-sqlClaims = '''INSERT INTO speak(speaker, score, claim,trans_id, claim_id) VALUES (%(speaker)s, %(score)s, %(claim)s, %(trans_id)s, %(claim_id)s) ON CONFLICT ON CONSTRAINT speak_pkey DO NOTHING'''
+sqlClaims = '''INSERT INTO speak(speaker, score, claim,trans_id, claim_id, date) VALUES (%(speaker)s, %(score)s, %(claim)s, %(trans_id)s, %(claim_id)s, %(date)s) ON CONFLICT ON CONSTRAINT speak_pkey DO NOTHING'''
 #sqlDetails = '''INSERT INTO details('''
 sqlScript = '''INSERT INTO transcript(trans_id, script) VALUES (%(trans_id)s, %(script)s) ON CONFLICT ON CONSTRAINT transcript_pkey DO NOTHING'''
 
@@ -37,9 +37,9 @@ def getFormattedDate():
 
 #return today's CNN transcript page URL
 def cnnLink():
-	return 'http://transcripts.cnn.com/TRANSCRIPTS/'+getFormattedDate()+'.html'
+	#return 'http://transcripts.cnn.com/TRANSCRIPTS/'+getFormattedDate()+'.html'
 	
-	#return 'http://transcripts.cnn.com/TRANSCRIPTS/2017.05.05.html'
+	return 'http://transcripts.cnn.com/TRANSCRIPTS/2017.10.02.html'
 
 #get transcript_ids (links endings) for each transcipt available
 def findNewTranscripts(mainPageLink):
@@ -171,6 +171,7 @@ def submitClaimbuster(dic):
 	numClaims = 0
 	busterBase = 'http://idir-server2.uta.edu:80/factchecker/score_text/'
 	busterEnd = '?format=json'
+	td = getFormattedDate().replace('.','-')
 	for transFacts, chunks in dic.items():
 		speakers = chunks[0]
 		speakerChunks = chunks[1]
@@ -193,6 +194,7 @@ def submitClaimbuster(dic):
 					#print(statement['text'])
 					insert['claim'] = statement['text'].replace('+', ' ')
 					insert['claim_id'] = getClaimHash(speaker, statement['text'], transFacts[0])
+					insert['date'] = td
 					
 					#cur.execute(sqlClaims, insert)
 					numClaims+=1
