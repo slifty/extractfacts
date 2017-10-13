@@ -1,25 +1,61 @@
 # ExtractFacts
 
-Find factual claims in daily CNN transcripts
+Scrapes daily CNN transcripts, identifies factual claims with the Claimbuster NLP library, and allows people to browse through them with a Django app. 
 
-## Process
+## Getting Started
 
-1. Every night, visit CNN's transcript page corresponding to that day's date
-2. Follow each link leading to a transcript on the page, and for each transcript:
-	* Get rid of html junk
-	* Use Regex to find speaker names; break the transcript into chunks based on new speakers
-	* Compile two concurrent lists: one of speakers and one of statements those speakers have made in the transcript
-	* Use Regex to make sure that speakers in our list are always referred to the same way 
-		* e.g. "President Barack Obama", "Barack Obama" and "Obama" should all be recognized as names referring to the same person
-	* Link the concurrent lists of speakers and statements to a data structure containing identifying information about the transcript (it's url ending, the name of the show it's from and the date it was created)
-	* Insert the above data structure into a larger collection which holds such structures for every transcript uploaded that day
-3. For each transcript in the collection:
-	* Submit speaker statements to Claimbuster through its API
-	* For every claim Claimbuster identifies in the statement, make an insertion to a database with the claim, the transcript_id the claim corresponds to and the speaker of the claim.
+To run the scraper/app, you'll need Python 3.x and PostgreSQL 9.5+
 
-## Coming soon
+### Installing
 
-1. More efficient database insertions
-2. Creation of a new relation in the database holding a transcript id, a show name and a date
-3. Creation of hashed claim_ids for the clames relation 
-4. Revision of the code so that the program runs continuously rather than trying to scrape all transcripts once every 24 hours
+First, setup a virtual environment and install the required python packages
+
+```
+virtualenv env
+.\/env/scripts/activate
+pip install -r requirements.txt
+```
+
+Then create a PostgreSQL database with two tables to store transcript information
+```
+CREATE TABLE speak (
+    claim text,
+    speaker text,
+    score double precision,
+    trans_id text,
+    claim_id text NOT NULL,
+    date date
+);
+
+CREATE TABLE transcript (
+    trans_id text NOT NULL,
+    script text
+);
+
+```
+The default database name is practice; the default port is 5432. If either is changed, be sure to replace all instances of "practice" and "5432" in buster.py and settings.py.
+
+
+## Running the app
+
+To run the scraping script, open up a terminal and enter
+
+```
+python buster.py
+```
+
+To run the Django webapp locally and explore scored claims in the database, open up a terminal and enter
+```
+python manage.py runserve
+```
+
+
+## Author
+
+**Asa Royal** 
+
+## Acknowledgments
+Thanks to
+
+* Duke Reporter's Lab
+* Django Girls
