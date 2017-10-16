@@ -46,7 +46,7 @@ python buster.py
 
 To run the Django webapp locally and explore scored claims in the database, open up a terminal and enter
 ```
-python manage.py runserve
+python manage.py runserver
 ```
 
 

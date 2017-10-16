@@ -12,7 +12,7 @@ import time
 import random
 import sys, os
 
-
+#thought: all caps text b/w parentheses usually worthless... Regex them out?
 
 #connect to local postgres server  
 try:
@@ -33,14 +33,10 @@ def getFormattedDate():
 	print('---------',dateOnly,'---------')
 	return dateOnly
 
-
-
 def cnnLink():
 	"""return link to base CNN transcript page corresponding to date"""
+	#return 'http://transcripts.cnn.com/TRANSCRIPTS/2017.10.12.html'
 	return 'http://transcripts.cnn.com/TRANSCRIPTS/'+getFormattedDate()+'.html'
-	
-	
-
 
 def findNewTranscripts(mainPageLink):
 	"""scan base CNN transcript page to get links to all individual transcript""" 
@@ -59,7 +55,6 @@ def similarity(x,y):
 	"""Find similarity between two strings using seuencematcher. Looks for "longest contiguous matching subsequence" 	"""
 	return SequenceMatcher(None,x, y).ratio()
 
-
 def cleanHtml(soup, details):
 	"""Remove some html tags and script transition statements from 'souped' page; extract header details """
 	soup.prettify()
@@ -74,9 +69,13 @@ def identifySpeakersStatements(stringscript):
 	"""Break transcript up into matching lists of speakers and statements"""
 	speakerChunks = []
 	speakers = []
-	lastSpeaker = ''
+	#lastSpeaker = ''
 	prevStart = 0
 	end = 1
+
+	stringscript = re.sub('SENATOR ','', stringscript)
+	stringscript = re.sub(' \(via telephone\)', '', stringscript)
+ 
 
 	for m in re.finditer('[A-Z].*[A-Z] ?:', stringscript): #search for beginning of speaker chunk (capital letters + colon) 
 		temp = m.group(0)
@@ -84,15 +83,18 @@ def identifySpeakersStatements(stringscript):
 			temp = temp[:temp.find(',')] 
 		if ':' in temp:
 			temp = temp[:temp.find(':')]
+		if '.' in temp:
+			temp = temp[temp.find('.'):]
+		if '(' in temp:
+			temp = temp[:temp.find('(')]
 
 		speakers.append(temp)
-		lastSpeaker = temp
+		#lastSpeaker = temp
 
 		if prevStart:
 			speakerChunks.append(stringscript[prevStart:m.start()])
 		prevStart = m.end()
 		end = m.end()
-
 
 	return speakerChunks, speakers
 
@@ -107,7 +109,6 @@ def refineSpeakers(speakers):
 			elif similarity(speakers[speaker],otherspeaker) > .465 and len(speakers[speaker]) < len(otherspeaker):
 				speakers[speaker] = otherspeaker
 	return speakers
-
 
 def scrapeFeed():
 	""" Use above methods to find cnn transcripts, scrape them and organize them into usable data"""
@@ -135,8 +136,6 @@ def scrapeFeed():
 			dic[details] = (speakers, speakerChunks)
 			scriptSet.append({'trans_id': details[0], 'script' : stringscript})
 
-
-
 		except Exception as e:
 			numErrors+=1
 			print('continuing despite error:', e)
@@ -146,7 +145,6 @@ def scrapeFeed():
 	print(len(linksToday) - numErrors, 'transcripts sucessfully processed')
 	return dic
 
-
 def getClaimHash(speaker, claim, trans_id):
 	"""Create a hash value from the text of a claim, the claim's speaker, the transcript id(show/date) and a random number. Used as a SQL primary key"""
 	hashString = speaker+claim+trans_id+str(random.randint(0,500))
@@ -154,7 +152,7 @@ def getClaimHash(speaker, claim, trans_id):
 	hash_obj = hashlib.md5(hashByte)
 	return hash_obj.hexdigest()
 
-listem = []
+listem = [] #list of all claimbuster responses
 
 def submitClaimbuster(dic):
 	"""Submit chunks of text to the Claimbuster API for scoring. """
@@ -192,7 +190,6 @@ def submitClaimbuster(dic):
 				print('error',e)
 				numErrors+=1
 
-
 	print("API submission errors:", numErrors)
 
 def insertDatabase():
@@ -202,8 +199,6 @@ def insertDatabase():
 	cur.close()
 	if conn is not None:
 		conn.close()
-
-
 
 
 x = time.time()
