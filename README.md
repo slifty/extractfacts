@@ -1,6 +1,6 @@
 # ExtractFacts
 
-Scrapes daily CNN transcripts, identifies factual claims with the Claimbuster NLP library, and allows people to browse through them with a Django app. 
+This project scrapes speech and speakers from CNN show transcripts, uses the Claimbuster NLP library to identify factual claims in the speech, and allows users to browse through the them with a Django app. 
 
 ## Getting Started
 
@@ -58,4 +58,3 @@ python manage.py runserver
 Thanks to
 
 * Duke Reporter's Lab
-* Django Girls

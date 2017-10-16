@@ -14,16 +14,7 @@ import sys, os
 
 #thought: all caps text b/w parentheses usually worthless... Regex them out?
 
-#connect to local postgres server  
-try:
-	conn = psycopg2.connect("dbname = 'practice' user = 'postgres' host = 'localhost' password = 'butt'")
-except:
-	print("Can't connect to the database")
 
-cur = conn.cursor()
-
-sqlClaims = '''INSERT INTO speak(speaker, score, claim,trans_id, claim_id, date) VALUES (%(speaker)s, %(score)s, %(claim)s, %(trans_id)s, %(claim_id)s, %(date)s) ON CONFLICT ON CONSTRAINT speak_pkey DO NOTHING'''
-sqlScript = '''INSERT INTO transcript(trans_id, script) VALUES (%(trans_id)s, %(script)s) ON CONFLICT ON CONSTRAINT transcript_pkey DO NOTHING'''
 
 
 def getFormattedDate():
@@ -66,28 +57,38 @@ def cleanHtml(soup, details):
 	return tag2
 
 def identifySpeakersStatements(stringscript):
-	"""Break transcript up into matching lists of speakers and statements"""
+	"""Break transcript up into matching lists of speakers and statements; remove titles from speakers"""
 	speakerChunks = []
 	speakers = []
 	#lastSpeaker = ''
 	prevStart = 0
 	end = 1
 
-	stringscript = re.sub('SENATOR ','', stringscript)
-	stringscript = re.sub(' \(via telephone\)', '', stringscript)
+	stringscript = re.sub('SENATOR ','', stringscript)			   #remove title
+	stringscript = re.sub(' \(via telephone\)', '', stringscript)  #remove phone details
+	stringscript = re.sub('\([A-Z].{1,20}[A-Z]\)','',stringscript) #remove stage instructons
+	stringscript = re.sub('SEN. ','', stringscript)
+	stringscript = re.sub(' \(voice- over\)', '', stringscript)
+	stringscript = re.sub(' \(voice-over\)', '', stringscript)
+	print(stringscript)
  
-
-	for m in re.finditer('[A-Z].*[A-Z] ?:', stringscript): #search for beginning of speaker chunk (capital letters + colon) 
+	for m in re.finditer('[A-Z][A-Z].{1,90}[A-Z]:', stringscript): #search for beginning of speaker chunk (capital letters + colon) 
 		temp = m.group(0)
 		if ',' in temp:
 			temp = temp[:temp.find(',')] 
+		if '.' in temp:
+			temp = temp[temp.rfind('.'):]
 		if ':' in temp:
 			temp = temp[:temp.find(':')]
-		if '.' in temp:
-			temp = temp[temp.find('.'):]
 		if '(' in temp:
 			temp = temp[:temp.find('(')]
 
+		if '.' in temp:
+			temp = temp[temp.rfind('.')+1:]
+
+		#return temp
+
+		temp = temp.strip()
 		speakers.append(temp)
 		#lastSpeaker = temp
 
@@ -99,16 +100,23 @@ def identifySpeakersStatements(stringscript):
 	return speakerChunks, speakers
 
 def refineSpeakers(speakers):
-	"""Lop titles off names; match last name references to firstname-lastname referfences"""
-	speakerSet = set(speakers)
+	"""Replace last name references with full names"""
+	
+	speakerSet = list(set(speakers))
 
-	for speaker in range(len(speakers)):
-		for otherspeaker in speakerSet:
-			if ' ' in otherspeaker and similarity(otherspeaker.split(' ')[-1], speakers[speaker]) > .7 and len(otherspeaker) < 25:
-				speakers[speaker] = otherspeaker
-			elif similarity(speakers[speaker],otherspeaker) > .465 and len(speakers[speaker]) < len(otherspeaker):
-				speakers[speaker] = otherspeaker
-	return speakers
+	for i,spkr in enumerate(speakerSet):
+		for j, spkr1 in enumerate(speakerSet):
+			if ' ' in spkr:
+				if spkr.split()[1] == spkr1:
+					speakerSet[j] = spkr
+
+	speakerSet = set(speakerSet)
+
+	for i, spkr in enumerate(speakerSet):
+		if ' ' in spkr:
+			for j, spkr1 in enumerate(speakers):
+				if spkr1 == spkr.split()[1]:
+					speakers[j] = spkr
 
 def scrapeFeed():
 	""" Use above methods to find cnn transcripts, scrape them and organize them into usable data"""
@@ -116,7 +124,7 @@ def scrapeFeed():
 	dic = {} #maps a transcript's details to the set of speakers and statements that comprise the transcript
 	scriptSet = []
 	linksToday = findNewTranscripts(cnnLink())
-	
+	#linksToday = ['http://transcripts.cnn.com/TRANSCRIPTS/1710/16/cnr.17.html']
 	for transcript_link in linksToday:
 		
 		unique_id = transcript_link[39:-5] #url ending
@@ -152,7 +160,7 @@ def getClaimHash(speaker, claim, trans_id):
 	hash_obj = hashlib.md5(hashByte)
 	return hash_obj.hexdigest()
 
-listem = [] #list of all claimbuster responses
+#listem = [] #list of all claimbuster responses
 
 def submitClaimbuster(dic):
 	"""Submit chunks of text to the Claimbuster API for scoring. """
@@ -200,10 +208,22 @@ def insertDatabase():
 	if conn is not None:
 		conn.close()
 
+if __name__ == '__main__':
+	#connect to local postgres server  
+	try:
+		conn = psycopg2.connect("dbname = 'practice' user = 'postgres' host = 'localhost' password = 'butt'")
+	except:
+		print("Can't connect to the database")
 
-x = time.time()
-dic = scrapeFeed()
-submitClaimbuster(dic)
-insertDatabase()
-print('elapsed time:', time.time()-x, 'seconds')
+	cur = conn.cursor()
+
+	sqlClaims = '''INSERT INTO speak(speaker, score, claim,trans_id, claim_id, date) VALUES (%(speaker)s, %(score)s, %(claim)s, %(trans_id)s, %(claim_id)s, %(date)s) ON CONFLICT ON CONSTRAINT speak_pkey DO NOTHING'''
+	sqlScript = '''INSERT INTO transcript(trans_id, script) VALUES (%(trans_id)s, %(script)s) ON CONFLICT ON CONSTRAINT transcript_pkey DO NOTHING'''
+
+	listem = [] #list of all claimbuster responses
+	x = time.time()
+	dic = scrapeFeed()
+	submitClaimbuster(dic)
+	insertDatabase()
+	print('elapsed time:', time.time()-x, 'seconds')
 
