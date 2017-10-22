@@ -12,21 +12,17 @@ import time
 import random
 import sys, os
 
-#thought: all caps text b/w parentheses usually worthless... Regex them out?
-
-
-
-
 def getFormattedDate():
 	"""Returns today's date in CNN URL format (YYYY.MM.DD)"""
 	zone =  timezone('EST')
+	return '2017.10.12' ###################################################CDHANGE THSI BEFORE YOU RUN AGAIN!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	dateOnly = datetime.now(zone).strftime('%Y.%m.%d')
 	print('---------',dateOnly,'---------')
 	return dateOnly
 
 def cnnLink():
 	"""return link to base CNN transcript page corresponding to date"""
-	#return 'http://transcripts.cnn.com/TRANSCRIPTS/2017.10.12.html'
+	return 'http://transcripts.cnn.com/TRANSCRIPTS/2017.10.12.html'
 	return 'http://transcripts.cnn.com/TRANSCRIPTS/'+getFormattedDate()+'.html'
 
 def findNewTranscripts(mainPageLink):
@@ -60,7 +56,6 @@ def identifySpeakersStatements(stringscript):
 	"""Break transcript up into matching lists of speakers and statements; remove titles from speakers"""
 	speakerChunks = []
 	speakers = []
-	#lastSpeaker = ''
 	prevStart = 0
 	end = 1
 
@@ -85,11 +80,8 @@ def identifySpeakersStatements(stringscript):
 		if '.' in temp:
 			temp = temp[temp.rfind('.')+1:]
 
-		#return temp
-
 		temp = temp.strip()
 		speakers.append(temp)
-		#lastSpeaker = temp
 
 		if prevStart:
 			speakerChunks.append(stringscript[prevStart:m.start()])
@@ -124,7 +116,6 @@ def scrapeFeed():
 	dic = {} #maps a transcript's details to the set of speakers and statements that comprise the transcript
 	scriptSet = []
 	linksToday = findNewTranscripts(cnnLink())
-	#linksToday = ['http://transcripts.cnn.com/TRANSCRIPTS/1710/16/cnr.17.html']
 	for transcript_link in linksToday:
 		
 		unique_id = transcript_link[39:-5] #url ending
@@ -160,7 +151,6 @@ def getClaimHash(speaker, claim, trans_id):
 	hash_obj = hashlib.md5(hashByte)
 	return hash_obj.hexdigest()
 
-#listem = [] #list of all claimbuster responses
 
 def submitClaimbuster(dic):
 	"""Submit chunks of text to the Claimbuster API for scoring. """
@@ -173,7 +163,6 @@ def submitClaimbuster(dic):
 	for transFacts, chunks in dic.items(): 
 		speakers = chunks[0]
 		speakerChunks = chunks[1]
-		#print(type(speakers), type(speakerChunks))
 		for speaker, chunk in zip(speakers, speakerChunks):
 			try:
 				chunk = chunk.replace('\n', '')
@@ -209,7 +198,6 @@ def insertDatabase():
 		conn.close()
 
 if __name__ == '__main__':
-	#connect to local postgres server  
 	try:
 		conn = psycopg2.connect("dbname = 'practice' user = 'postgres' host = 'localhost' password = 'butt'")
 	except:
@@ -226,4 +214,3 @@ if __name__ == '__main__':
 	submitClaimbuster(dic)
 	insertDatabase()
 	print('elapsed time:', time.time()-x, 'seconds')
-

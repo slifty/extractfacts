@@ -70,7 +70,6 @@ def identifySpeakersStatements(stringscript):
 	stringscript = re.sub('SEN. ','', stringscript)
 	stringscript = re.sub(' \(voice- over\)', '', stringscript)
 	stringscript = re.sub(' \(voice-over\)', '', stringscript)
-	print(stringscript)
  
 	for m in re.finditer('[A-Z][A-Z].{1,90}[A-Z]:', stringscript): #search for beginning of speaker chunk (capital letters + colon) 
 		temp = m.group(0)
@@ -117,6 +116,7 @@ def refineSpeakers(speakers):
 			for j, spkr1 in enumerate(speakers):
 				if spkr1 == spkr.split()[1]:
 					speakers[j] = spkr
+	return speakers
 
 def scrapeFeed():
 	""" Use above methods to find cnn transcripts, scrape them and organize them into usable data"""
@@ -173,7 +173,7 @@ def submitClaimbuster(dic):
 	for transFacts, chunks in dic.items(): 
 		speakers = chunks[0]
 		speakerChunks = chunks[1]
-		
+		#print(type(speakers), type(speakerChunks))
 		for speaker, chunk in zip(speakers, speakerChunks):
 			try:
 				chunk = chunk.replace('\n', '')
