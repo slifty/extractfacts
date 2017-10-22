@@ -15,14 +15,12 @@ import sys, os
 def getFormattedDate():
 	"""Returns today's date in CNN URL format (YYYY.MM.DD)"""
 	zone =  timezone('EST')
-	return '2017.10.12' ###################################################CDHANGE THSI BEFORE YOU RUN AGAIN!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	dateOnly = datetime.now(zone).strftime('%Y.%m.%d')
 	print('---------',dateOnly,'---------')
 	return dateOnly
 
 def cnnLink():
 	"""return link to base CNN transcript page corresponding to date"""
-	return 'http://transcripts.cnn.com/TRANSCRIPTS/2017.10.12.html'
 	return 'http://transcripts.cnn.com/TRANSCRIPTS/'+getFormattedDate()+'.html'
 
 def findNewTranscripts(mainPageLink):
